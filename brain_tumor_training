@@ -1,0 +1,89 @@
+import cv2
+import os
+import numpy as np
+from keras.utils import normalize, to_categorical
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
+
+from keras.models import Sequential
+from keras.layers import Conv2D, MaxPool2D, Activation, Dropout, Flatten, Dense
+from keras.initializers import he_uniform
+
+# Paths to the image directories
+image_path_yes = r'D:\one drive\OneDrive\Desktop\Pro\AI brain tumor detection\brain_tumor_dataset\yes'
+image_path_no = r'D:\one drive\OneDrive\Desktop\Pro\AI brain tumor detection\brain_tumor_dataset\no'
+
+# Load images and labels
+yes_tumor_images = os.listdir(image_path_yes)
+no_tumor_images = os.listdir(image_path_no)
+
+dataset = []
+label = []
+
+input_size = 64
+
+# Processing tumor images
+for image_name in yes_tumor_images:
+    if image_name.lower().endswith('.jpg'):
+        image_path = os.path.join(image_path_yes, image_name)
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)  # Read as grayscale
+        image = cv2.resize(image, (input_size, input_size))  # Resize the image
+        dataset.append(image)
+        label.append(1)
+
+# Processing non-tumor images
+for image_name in no_tumor_images:
+    if image_name.lower().endswith('.jpg'):
+        image_path = os.path.join(image_path_no, image_name)
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)  # Read as grayscale
+        image = cv2.resize(image, (input_size, input_size))  # Resize the image
+        dataset.append(image)
+        label.append(0)
+
+# Convert to numpy array and normalize
+dataset = np.array(dataset, dtype=np.float32) / 255.0
+label = np.array(label)
+
+# Reshape the data
+dataset = np.reshape(dataset, (dataset.shape[0], input_size, input_size, 1))
+
+# Normalize the data
+dataset = normalize(dataset, axis=1)
+
+# Split the data into training and testing sets
+x_train, x_test, y_train, y_test = train_test_split(dataset, label, test_size=0.2)
+
+# Convert labels to one-hot encoding
+y_train = to_categorical(y_train, num_classes=2)
+y_test = to_categorical(y_test, num_classes=2)
+
+# Building the model
+model = Sequential()
+model.add(Conv2D(32, (3, 3), input_shape=(input_size, input_size, 1), kernel_initializer=he_uniform()))
+model.add(Activation('relu'))
+model.add(MaxPool2D(pool_size=(2, 2)))
+
+model.add(Conv2D(64, (3, 3), kernel_initializer=he_uniform()))
+model.add(Activation('relu'))
+model.add(MaxPool2D(pool_size=(2, 2)))
+
+model.add(Conv2D(128, (3, 3), kernel_initializer=he_uniform()))
+model.add(Activation('relu'))
+model.add(MaxPool2D(pool_size=(2, 2)))
+
+# Flatten
+model.add(Flatten())
+model.add(Dense(128, kernel_initializer=he_uniform()))
+model.add(Activation('relu'))
+model.add(Dropout(0.5))
+model.add(Dense(2))
+model.add(Activation('softmax'))
+
+# Compile the model
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Train the model on all the data
+model.fit(x_train, y_train, batch_size=16, verbose=1, epochs=20, validation_data=(x_test, y_test), shuffle=True)
+
+# Save the model
+model.save('BrainTumorScan_20epo_categorical.h5')
