@@ -1,0 +1,57 @@
+import cv2
+from keras.models import load_model
+from PIL import Image
+import numpy as np
+
+# Load the trained model
+model = load_model(r'D:\one drive\OneDrive\Desktop\Pro\AI brain tumor detection\BrainTumorScan_20epo_categorical.h5')
+
+# Path to the image to be predicted
+image_path = r"D:\one drive\OneDrive\Desktop\Pro\AI brain tumor detection\brain_tumor_dataset\pred\pred8.jpg"
+
+# Read the image
+image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)  # Read as grayscale
+
+# Check if the image was loaded successfully
+if image is None:
+    raise ValueError(f"Error loading image from path: {image_path}")
+
+# Convert the image to a PIL object
+img = Image.fromarray(image)
+
+# Resize the image
+img = img.resize((64, 64))
+
+# Convert the image to a numpy array
+img = np.array(img, dtype=np.float32) / 255.0  # Normalize
+
+# Reshape the image to match the model input
+img = np.reshape(img, (1, 64, 64, 1))  # Add batch and channel dimensions
+
+# Predict using the model
+prediction = model.predict(img)
+print("Prediction:", prediction)
+
+# Handle different prediction outputs
+if prediction.shape[1] == 2:
+    # Model outputs probabilities for two classes
+    tumor_prob = prediction[0][1]  # Probability of tumor
+    no_tumor_prob = prediction[0][0]  # Probability of no tumor
+
+    print(f"Probability of Tumor: {tumor_prob:.4f}")
+    print(f"Probability of No Tumor: {no_tumor_prob:.4f}")
+
+    if tumor_prob > no_tumor_prob:
+        print("The model predicts that there is a tumor.")
+    else:
+        print("The model predicts that there is no tumor.")
+else:
+    # Model outputs a single value (binary classification)
+    tumor_prob = prediction[0][0]
+
+    print(f"Probability of Tumor: {tumor_prob:.4f}")
+
+    if tumor_prob > 0.5:
+        print("The model predicts that there is a tumor.")
+    else:
+        print("The model predicts that there is no tumor.")
