@@ -1,0 +1,49 @@
+import os
+import numpy as np
+from PIL import Image
+from keras.models import load_model
+import streamlit as st
+
+# Load the model
+model = load_model('D:/one drive/OneDrive/Desktop/Pro/AI brain tumor detection/BrainTumorScan_20epo.h5')
+st.title('Brain Tumor Classification ')
+st.text('Upload an MRI image to classify it as having a brain tumor or not.')
+
+
+# Function to get the class name
+def get_className(classNo):
+    if classNo == 0:
+        return "No Brain Tumor"
+    elif classNo == 1:
+        return "Yes Brain Tumor"
+
+
+# Function to get the prediction result
+def getResult(img):
+    image = Image.open(img)
+    image = image.convert('L')  # Convert to grayscale
+    image = image.resize((64, 64))
+    image = np.array(image)
+    image = np.expand_dims(image, axis=-1)  # Add channel dimension
+    input_img = np.expand_dims(image, axis=0)
+    prediction = model.predict(input_img)
+    class_index = np.argmax(prediction, axis=1)[0]
+    probability = prediction[0][class_index]
+    return class_index, probability
+
+
+# Streamlit file uploader
+uploaded_file = st.file_uploader("Choose an MRI image...", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
+    # Display the uploaded image
+    st.image(uploaded_file, caption='Uploaded MRI Image.', use_column_width=True)
+    st.write("")
+
+    if st.button('Predict'):
+        st.write("Classifying...")
+        # Get and display the prediction result
+        result, probability = getResult(uploaded_file)
+        prediction = get_className(result)
+        st.write(f'Result: {prediction}')
+        st.write(f'Probability of having brain tumor: {probability * 100:.2f}%')
